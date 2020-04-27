@@ -178,6 +178,11 @@ function proratedmemberships_civicrm_themes(&$themes) {
   }
 
   function _getProratedFee(&$membershipTypeValues) {
+    $today = getdate();
+    if (in_array($today['mon'], [4,5,6])) {
+      // Do not prorate for April-June.
+      return;
+    }
     foreach ( $membershipTypeValues as &$values) {
       if ($values['period_type'] != 'fixed') {
         continue;
@@ -189,7 +194,6 @@ function proratedmemberships_civicrm_themes(&$themes) {
       // Rollover date
       $rollover_month = substr($values['fixed_period_rollover_day'], 0, strlen($values['fixed_period_rollover_day']) - 2);
 
-      $today = getdate();
       //$today = getdate(strtotime('2020-06-01')); // test different dates
 
       // Calcuate the number of months remaining in the membership period
