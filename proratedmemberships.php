@@ -148,6 +148,7 @@ function proratedmemberships_civicrm_themes(&$themes) {
     // Frontoffice membership forms.
     if (is_a($form, "CRM_Contribute_Form_Contribution_Main") && $pageType == "membership") {
       if (!empty($amount)) {
+        $feeBlock = &$amount;
         foreach ($amount as &$sets) {
           if (!empty($sets['options'])) {
             foreach ($sets['options'] as &$option) {
@@ -168,6 +169,8 @@ function proratedmemberships_civicrm_themes(&$themes) {
             }
           }
         }
+        // FIXME: Somewhere between 4.7.15 and 4.7.23 the above stopped working and we have to do the following to make the confirm page show the correct amount.
+        $form->_priceSet['fields'] = $feeBlock;
       }
     }
   }
