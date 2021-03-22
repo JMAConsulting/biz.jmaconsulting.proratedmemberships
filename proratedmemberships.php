@@ -182,7 +182,7 @@ function proratedmemberships_civicrm_themes(&$themes) {
 
   function _getProratedFee(&$membershipTypeValues) {
     $today = getdate();
-    if (in_array($today['mon'], [4,5,6])) {
+    if (in_array($today['mon'], [3,4,5,6])) {
       // Do not prorate for April-June.
       return;
     }
