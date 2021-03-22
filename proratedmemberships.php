@@ -158,7 +158,7 @@ function proratedmemberships_civicrm_themes(&$themes) {
                   'id' => $option['membership_type_id'],
                   ])['values'];
                 if (!empty($membershipTypeValues)) {
-                  _getProratedFee($membershipTypeValues);
+                  _getProratedFee($membershipTypeValues, $form->getContactID());
                   foreach ($membershipTypeValues as $membershipType) {
                     if ($membershipType['id'] == $option['membership_type_id']) {
                       $option['amount'] = $membershipType['minimum_fee'];
@@ -176,11 +176,19 @@ function proratedmemberships_civicrm_themes(&$themes) {
   }
 
   function proratedmemberships_civicrm_membershipTypeValues( &$form, &$membershipTypeValues ) {
+    $contactID = NULL;
+    if (get_class($form) == 'CRM_Contribute_Form_Contribution_Main') {
+      $contactID = $form->getContactID();
+    }
+    elseif (get_class($form) == 'CRM_Member_Form_Membership') {
+      $contactID = $form->getVar('_contactID');
+    }
+
     // Backoffice contributions.
-    _getProratedFee($membershipTypeValues);
+    _getProratedFee($membershipTypeValues, $contactID);
   }
 
-  function _getProratedFee(&$membershipTypeValues) {
+  function _getProratedFee(&$membershipTypeValues, $contactID = NULL) {
     $today = getdate();
     if (in_array($today['mon'], [4,5,6])) {
       // Do not prorate for April-June.
@@ -188,6 +196,9 @@ function proratedmemberships_civicrm_themes(&$themes) {
     }
     foreach ( $membershipTypeValues as &$values) {
       if ($values['period_type'] != 'fixed') {
+        continue;
+      }
+      if (!empty($contactID) && civicrm_api3('Membership', 'getcount', ['contact_id' => $contactID, 'membership_type_id' => $values['id']]) > 0) {
         continue;
       }
 
