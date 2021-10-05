@@ -213,6 +213,42 @@ function proratedmemberships_civicrm_themes(&$themes) {
       }
     }
   }
+
+  function proratedmemberships_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+    if ($objectName == "Membership" && $op == "create") {
+      if (!empty($objectRef->contribution_recur_id)) {
+        $minimumFee = civicrm_api3('MembershipType', 'getvalue', [
+          'return' => "minimum_fee",
+          'id' => $objectRef->membership_type_id,
+        ]);
+        // We update the contribution recur fee amount to the correct amount.
+        $recur = civicrm_api3('ContributionRecur', 'getsingle', [
+          'id' => $objectRef->contribution_recur_id,
+        ]);
+        civicrm_api3('ContributionRecur', 'create', [
+          'contact_id' => $recur['contact_id'],
+          'amount' => $minimumFee,
+          'frequency_interval' => $recur['frequency_interval'],
+          'id' => $objectRef->contribution_recur_id,
+        ]);
+      }
+      if (!empty($objectRef->membership_type_id)) {
+        $membershipTypeDetails = civicrm_api3('MembershipType', 'getsingle', ['id' => $objectRef->membership_type_id]);
+        $today = getdate();
+        // checking only for purchases made on Feb or March for fixed (not rolling) type of memberships
+        if ($membershipTypeDetails['period_type'] == 'fixed' && in_array($today['mon'], [2, 3])) {
+          $time = sprintf('+%d %s', $membershipTypeDetails['duration_interval'], $membershipTypeDetails['duration_unit']);
+          $expectedEndDate = date('Ymd', strtotime($time, strtotime($objectRef->start_date)));
+          if (strtotime($objectRef->end_date) < strtotime($expectedEndDate)) {
+            $expectedEndDate = '31-03-' . date('Y', strtotime($expectedEndDate));
+            $objectRef->end_date = $expectedEndDate;
+            $objectRef->save();
+          }
+        }
+      }
+    }
+  }
+
 /**
  * Implements hook_civicrm_preProcess().
  *
