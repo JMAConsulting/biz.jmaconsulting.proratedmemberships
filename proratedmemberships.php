@@ -158,7 +158,7 @@ function proratedmemberships_civicrm_themes(&$themes) {
                   'id' => $option['membership_type_id'],
                   ])['values'];
                 if (!empty($membershipTypeValues)) {
-                  _getProratedFee($membershipTypeValues);
+                  _getProratedFee($membershipTypeValues, $form->getContactID());
                   foreach ($membershipTypeValues as $membershipType) {
                     if ($membershipType['id'] == $option['membership_type_id']) {
                       $option['amount'] = $membershipType['minimum_fee'];
@@ -176,18 +176,39 @@ function proratedmemberships_civicrm_themes(&$themes) {
   }
 
   function proratedmemberships_civicrm_membershipTypeValues( &$form, &$membershipTypeValues ) {
+    $contactID = NULL;
+    if (get_class($form) == 'CRM_Contribute_Form_Contribution_Main') {
+      $contactID = $form->getContactID();
+    }
+    elseif (get_class($form) == 'CRM_Member_Form_Membership') {
+      $contactID = $form->getVar('_contactID');
+    }
     // Backoffice contributions.
-    _getProratedFee($membershipTypeValues);
+    _getProratedFee($membershipTypeValues, $contactID);
   }
 
-  function _getProratedFee(&$membershipTypeValues) {
+  function _getProratedFee(&$membershipTypeValues, $contactID = NULL) {
     $today = getdate();
-    if (in_array($today['mon'], [3,4,5,6])) {
-      // Do not prorate for April-June.
-      return;
-    }
+    // if a person purchases a new membership then do not prorate for Feb-Mar
+    $months = [2, 3];
     foreach ( $membershipTypeValues as &$values) {
       if ($values['period_type'] != 'fixed') {
+        continue;
+      }
+
+      if ($contactID) {
+        $membership = civicrm_api3('Membership', 'get', [
+          'membership_type_id' => $values['id'],
+          'contact_id' => $contactID,
+        ])['count'];
+        // if a person renews a membership then do not prorate for Mar-Jun
+        if ($membership) {
+          $months = [3,4,5,6];
+        }
+      }
+
+      if (in_array($today['mon'], $months)) {
+        // Do not prorate for April-June.
         continue;
       }
 
